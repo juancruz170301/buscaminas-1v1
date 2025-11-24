@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Buscaminas Python</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<h1>Buscaminas 1v1 (Python Flask)</h1>
+
+<div id="menu">
+    <button id="create">Crear sala</button><br><br>
+    <input id="room" placeholder="Código">
+    <button id="join">Unirse</button>
+</div>
+
+<div id="controls">
+    <h3>Tamaño</h3>
+    <button id="size3">3×3</button>
+    <button id="size5">5×5</button>
+    <button id="size7">7×7</button>
+    <button id="size9">9×9</button><br><br>
+    <button id="finish">Listo</button>
+</div>
+
+<div id="info">
+    <p id="phase"></p>
+    <p id="turn"></p>
+    <p id="lives"></p>
+</div>
+
+<div id="board"></div>
+
+<footer>Versión Python 1.0</footer>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/game.js"></script>
+</body>
+</html>
