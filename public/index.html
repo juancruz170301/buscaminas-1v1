@@ -1,48 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Buscaminas 1v1</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>Buscaminas 1v1</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <h1>Buscaminas 1v1</h1>
+<h1>Buscaminas 1v1</h1>
 
-  <div id="menu">
-    <button id="auto">Crear sala automática</button>
+<div id="menu">
+    <button id="create">Crear sala automáticamente</button>
     <br><br>
 
     <input id="room" placeholder="Código de sala">
     <button id="join">Unirse</button>
 
     <p id="players"></p>
-  </div>
+</div>
 
-  <div id="controls">
-    <h3>Tamaños</h3>
+<div id="controls">
+    <h3>Tamaño del tablero</h3>
 
-    <button id="size3">3x3</button>
-    <button id="size4">4x4</button>
-    <button id="size5">5x5</button>
-    <button id="size7">7x7</button>
+    <button id="size3">3×3</button>
+    <button id="size5">5×5</button>
+    <button id="size7">7×7</button>
+    <button id="size9">9×9</button>
 
     <br><br>
 
     <button id="finish">Listo</button>
-  </div>
+</div>
 
-  <div id="infoBox">
+<div id="info">
     <p id="phase"></p>
     <p id="turn"></p>
     <p id="lives"></p>
     <p id="timer"></p>
-  </div>
+</div>
 
-  <div id="board"></div>
+<div id="board"></div>
 
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="game.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="game.js"></script>
 
 </body>
 </html>
