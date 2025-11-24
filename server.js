@@ -7,44 +7,61 @@ const io = require("socket.io")(http, {
 
 app.use(express.static("public"));
 
-let rooms = {};
+let rooms = {}; 
+// rooms = {
+//    "ABC": { players: [], board: [...], state: "placingP1" }
+// }
 
 io.on("connection", socket => {
 
+  // Crear o unirse a una sala
   socket.on("joinRoom", room => {
-    socket.join(room);
 
+    // Si la sala no existe → crear sala nueva
     if (!rooms[room]) {
       rooms[room] = {
         players: [],
-        gameState: null
+        created: Date.now()
       };
+
+      console.log("Sala creada:", room);
+      socket.emit("roomStatus", { created: true });
+    } else {
+      console.log("Unido a sala existente:", room);
+      socket.emit("roomStatus", { created: false });
     }
 
+    // Agregar jugador a la sala
+    socket.join(room);
     rooms[room].players.push(socket.id);
 
+    // Avisar a la sala cuántos jugadores hay
     io.to(room).emit("playersUpdate", rooms[room].players);
   });
 
-  socket.on("placeMine", data => {
-    io.to(data.room).emit("minePlaced", data);
-  });
 
-  socket.on("startGame", room => {
-    io.to(room).emit("startGame");
-  });
-
+  // Cuando un jugador cava una celda
   socket.on("digCell", data => {
     io.to(data.room).emit("cellDug", data);
   });
 
+
+  // Cuando un jugador coloca una mina
+  socket.on("placeMine", data => {
+    io.to(data.room).emit("minePlaced", data);
+  });
+
+
+  // Desconexión
   socket.on("disconnect", () => {
     for (let room in rooms) {
       rooms[room].players = rooms[room].players.filter(id => id !== socket.id);
       io.to(room).emit("playersUpdate", rooms[room].players);
     }
   });
+
 });
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => console.log("Servidor corriendo en", PORT));
+
