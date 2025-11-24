@@ -1,1 +1,33 @@
-body{background:#111}
+body{
+  background:#111;
+  color:white;
+  font-family:Arial;
+  text-align:center;
+  margin:0;
+  padding:20px;
+}
+#board{
+  display:grid;
+  gap:6px;
+  margin:auto;
+  margin-top:20px;
+}
+.cell{
+  width:60px;
+  height:60px;
+  background:#333;
+  border:2px solid #000;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:28px;
+  cursor:pointer;
+}
+.cell.dug{
+  background:#666;
+}
+footer{
+  margin-top:40px;
+  opacity:0.6;
+  font-size:14px;
+}

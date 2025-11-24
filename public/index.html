@@ -1,1 +1,43 @@
-<html></html>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Buscaminas 1v1</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Buscaminas 1v1</h1>
+
+<div id="menu">
+  <button id="create">Crear sala automáticamente</button><br><br>
+  <input id="room" placeholder="Código de sala">
+  <button id="join">Unirse</button>
+</div>
+
+<div id="controls">
+  <h3>Tamaño</h3>
+  <button id="size3">3×3</button>
+  <button id="size5">5×5</button>
+  <button id="size7">7×7</button>
+  <button id="size9">9×9</button>
+  <br><br>
+  <button id="finish">Listo</button>
+</div>
+
+<div id="info">
+  <p id="phase"></p>
+  <p id="turn"></p>
+  <p id="lives"></p>
+  <p id="timer"></p>
+</div>
+
+<div id="board"></div>
+
+<footer>Versión 1.0 – Última actualización</footer>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="game.js"></script>
+
+</body>
+</html>
