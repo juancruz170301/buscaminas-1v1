@@ -1,5 +1,4 @@
 
-// Complete working server.js (Node + Socket.IO)
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
@@ -9,93 +8,140 @@ app.use(express.static("public"));
 
 let rooms = {};
 
-const MINES_PER_SIZE = {3:2,5:5,7:7,9:10};
+const MINES = {3:2,5:5,7:7,9:10};
 
-function newRound(room){room.minesP1=new Set();room.minesP2=new Set();room.dug=new Set();room.phase="placing_p1";room.turn=1;room.timer=10;}
+function initRoom(code){
+  rooms[code]={
+    players:[],
+    size:3,
+    phase:"waiting",
+    mines:{1:new Set(),2:new Set()},
+    dug:new Set(),
+    turn:1,
+    lives:{1:3,2:3},
+    timer:10,
+    interval:null
+  };
+}
 
-function safeState(room,code){return {room:code,size:room.size,phase:room.phase,minesP1:[...room.minesP1],minesP2:[...room.minesP2],dug:[...room.dug],turn:room.turn,lives:room.lives,timer:room.timer,link:room.link};}
+function safe(r){
+  return {
+    size:r.size,
+    phase:r.phase,
+    mines1:[...r.mines[1]],
+    mines2:[...r.mines[2]],
+    dug:[...r.dug],
+    turn:r.turn,
+    lives:r.lives,
+    timer:r.timer
+  };
+}
 
 function startTimer(code){
- const room=rooms[code]; if(!room) return;
- if(room.interval) clearInterval(room.interval);
- room.timer=10;
- room.interval=setInterval(()=>{
-   const r=rooms[code]; if(!r)return;
-   r.timer--;
-   io.to(code).emit("state",safeState(r,code));
-   if(r.timer<=0){
-      r.lives[r.turn]--;
-      if(r.lives[r.turn]<=0){io.to(code).emit("game_over",{loser:r.turn});clearInterval(r.interval);return;}
-      newRound(r); io.to(code).emit("state",safeState(r,code)); return;
-   }
- },1000);
+  const r=rooms[code];
+  if(r.interval) clearInterval(r.interval);
+  r.timer=10;
+  r.interval=setInterval(()=>{
+    r.timer--;
+    io.to(code).emit("state",safe(r));
+    if(r.timer<=0){
+      if(r.phase==="placing_p1"||r.phase==="placing_p2"){
+        r.phase="playing";
+      }else{
+        r.lives[r.turn]--;
+        if(r.lives[r.turn]<=0){
+          io.to(code).emit("game_over",{loser:r.turn});
+          clearInterval(r.interval);
+          return;
+        }
+        newRound(code);
+      }
+      io.to(code).emit("state",safe(r));
+    }
+  },1000);
+}
+
+function newRound(code){
+  const r=rooms[code];
+  r.mines={1:new Set(),2:new Set()};
+  r.dug=new Set();
+  r.phase="placing_p1";
+  r.turn=1;
+  r.timer=10;
 }
 
 io.on("connection",socket=>{
- socket.on("create_room",()=>{
-   const code=Math.random().toString(36).substring(2,6).toUpperCase();
-   rooms[code]={players:[],size:5,minesP1:new Set(),minesP2:new Set(),dug:new Set(),phase:"waiting",turn:1,lives:{1:3,2:3},timer:10,interval:null,link:`/?room=${code}`};
-   socket.emit("room_created",code);
- });
+  socket.on("create_room",()=>{
+    const code=Math.random().toString(36).substring(2,6).toUpperCase();
+    initRoom(code);
+    socket.emit("room_created",code);
+  });
 
- socket.on("join_room",data=>{
-   const code=data.room;
-   if(!rooms[code]){socket.emit("error","room_not_found");return;}
-   const room=rooms[code];
-   if(room.players.length>=2){socket.emit("error","room_full");return;}
-   socket.join(code); room.players.push(socket.id);
-   if(room.players.length===2){newRound(room);startTimer(code);}
-   io.to(code).emit("state",safeState(room,code));
- });
+  socket.on("join_room",({room})=>{
+    if(!rooms[room]){socket.emit("error","no room");return;}
+    const r=rooms[room];
+    if(r.players.length>=2){socket.emit("error","full");return;}
+    socket.join(room);
+    r.players.push(socket.id);
+    if(r.players.length===2){
+      r.phase="placing_p1";
+      startTimer(room);
+    }
+    io.to(room).emit("state",safe(r));
+  });
 
- socket.on("set_size",data=>{
-   const room=rooms[data.room]; if(!room)return;
-   room.size=data.size;
-   io.to(data.room).emit("state",safeState(room,data.room));
- });
+  socket.on("set_size",({room,size})=>{
+    const r=rooms[room]; if(!r)return;
+    r.size=size;
+    io.to(room).emit("state",safe(r));
+  });
 
- socket.on("place_mine",data=>{
-   const room=rooms[data.room]; if(!room)return;
-   const need=MINES_PER_SIZE[room.size];
-   if(room.phase==="placing_p1" && room.minesP1.size<need) room.minesP1.add(data.pos);
-   if(room.phase==="placing_p2" && room.minesP2.size<need) room.minesP2.add(data.pos);
-   io.to(data.room).emit("state",safeState(room,data.room));
- });
+  socket.on("place_mine",({room,pos})=>{
+    const r=rooms[room]; if(!r)return;
+    const need=MINES[r.size];
+    if(r.phase==="placing_p1" && r.mines[1].size<need){
+      r.mines[1].add(pos);
+    }
+    if(r.phase==="placing_p2" && r.mines[2].size<need){
+      r.mines[2].add(pos);
+    }
+    io.to(room).emit("state",safe(r));
+  });
 
- socket.on("finish_placing",data=>{
-   const room=rooms[data.room]; if(!room)return;
-   const need=MINES_PER_SIZE[room.size];
-   if(room.phase==="placing_p1" && room.minesP1.size===need) room.phase="placing_p2";
-   else if(room.phase==="placing_p2" && room.minesP2.size===need) room.phase="playing";
-   io.to(data.room).emit("state",safeState(room,data.room));
- });
+  socket.on("finish_placing",({room})=>{
+    const r=rooms[room]; if(!r)return;
+    const need=MINES[r.size];
+    if(r.phase==="placing_p1" && r.mines[1].size===need){
+      r.phase="placing_p2";
+      io.to(room).emit("state",safe(r));
+      return;
+    }
+    if(r.phase==="placing_p2" && r.mines[2].size===need){
+      r.phase="playing";
+      r.timer=10;
+      io.to(room).emit("state",safe(r));
+    }
+  });
 
- socket.on("dig",data=>{
-   const room=rooms[data.room]; if(!room)return;
-   const pos=data.pos;
-   if(room.phase!=="playing")return;
-   if(room.dug.has(pos))return;
-   room.dug.add(pos);
-   if(room.minesP1.has(pos)||room.minesP2.has(pos)){
-      room.lives[room.turn]--;
-      if(room.lives[room.turn]<=0){
-        io.to(data.room).emit("game_over",{loser:room.turn});
-        clearInterval(room.interval); return;
+  socket.on("dig",({room,pos})=>{
+    const r=rooms[room]; if(!r)return;
+    if(r.phase!=="playing")return;
+    if(r.dug.has(pos))return;
+    r.dug.add(pos);
+    if(r.mines[1].has(pos)||r.mines[2].has(pos)){
+      r.lives[r.turn]--;
+      if(r.lives[r.turn]<=0){
+        io.to(room).emit("game_over",{loser:r.turn});
+        clearInterval(r.interval);
+        return;
       }
-      newRound(room); io.to(data.room).emit("state",safeState(room,data.room)); return;
-   }
-   room.turn=room.turn===1?2:1;
-   io.to(data.room).emit("state",safeState(room,data.room));
- });
-
- socket.on("disconnect",()=>{
-   for(const code in rooms){
-     const room=rooms[code];
-     room.players=room.players.filter(id=>id!==socket.id);
-     if(room.players.length===0){clearInterval(room.interval);delete rooms[code];}
-   }
- });
+      newRound(room);
+      io.to(room).emit("state",safe(r));
+      return;
+    }
+    r.turn=r.turn===1?2:1;
+    io.to(room).emit("state",safe(r));
+  });
 });
 
-const PORT=process.env.PORT||3000;
-http.listen(PORT,()=>console.log("Servidor activo en "+PORT));
+http.listen(3000,()=>console.log("ok"));
