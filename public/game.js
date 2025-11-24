@@ -2,77 +2,95 @@ const socket = io();
 let room = null;
 let state = null;
 
-document.getElementById("join").onclick = () => {
-  room = document.getElementById("room").value.trim();
-  socket.emit("joinRoom", room);
-};
+function qs(id) { return document.getElementById(id); }
 
-window.setBoardSize = size => {
-  socket.emit("setSize", { room, size });
-};
-
-function clickCell(r, c) {
-  if (!state) return;
-  const pos = r + "," + c;
-
-  if (state.phase === "placingP1" || state.phase === "placingP2") {
-    socket.emit("placeMine", { room, pos });
-  } else if (state.phase === "playing") {
-    socket.emit("digCell", { room, pos });
+window.onload = () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("room")) {
+    room = params.get("room");
+    socket.emit("joinRoom", room);
   }
-}
-
-document.getElementById("finish").onclick = () => {
-  socket.emit("finishPlacing", room);
 };
+
+qs("auto").onclick = () => {
+  socket.emit("autoRoom");
+};
+
+socket.on("roomCreated", data => {
+  room = data.code;
+  window.location.href = data.link;
+});
+
+qs("join").onclick = () => {
+  room = qs("room").value.trim();
+  if (room) socket.emit("joinRoom", room);
+};
+
+qs("size3").onclick = () => socket.emit("setSize", { room, size: 3 });
+qs("size4").onclick = () => socket.emit("setSize", { room, size: 4 });
+qs("size5").onclick = () => socket.emit("setSize", { room, size: 5 });
+qs("size7").onclick = () => socket.emit("setSize", { room, size: 7 });
+
+qs("finish").onclick = () => socket.emit("finishPlacing", room);
+
+socket.on("playersUpdate", count => {
+  qs("players").textContent = "Jugadores en sala: " + count;
+});
 
 socket.on("stateUpdate", s => {
   state = s;
-  drawBoard();
-  updateUI();
+  renderUI();
+  renderBoard();
 });
 
-function drawBoard() {
-  const board = document.getElementById("board");
-  board.innerHTML = "";
-  board.style.gridTemplateColumns = `repeat(${state.size}, 60px)`;
+socket.on("gameOver", data => {
+  alert("Jugador " + data.loser + " perdió la partida.");
+  location.reload();
+});
+
+function renderUI() {
+  qs("phase").textContent = "Fase: " + state.phase;
+  qs("turn").textContent = "Turno jugador: " + state.turn;
+  qs("lives").textContent = `Vidas → P1: ${state.lives[1]} | P2: ${state.lives[2]}`;
+  qs("timer").textContent = "Tiempo: " + state.timer;
+}
+
+function renderBoard() {
+  const b = qs("board");
+  b.innerHTML = "";
+  b.style.gridTemplateColumns = `repeat(${state.size}, 60px)`;
 
   for (let r = 0; r < state.size; r++) {
     for (let c = 0; c < state.size; c++) {
-      const div = document.createElement("div");
-      div.classList.add("cell");
+      const cell = document.createElement("div");
+      cell.className = "cell";
 
-      const pos = r + "," + c;
+      const pos = `${r},${c}`;
 
       if (state.phase === "placingP1" && state.minesP1.includes(pos))
-        div.textContent = "●";
+        cell.textContent = "●";
 
       if (state.phase === "placingP2" && state.minesP2.includes(pos))
-        div.textContent = "●";
+        cell.textContent = "●";
 
       if (state.phase === "playing") {
         if (state.dug.includes(pos)) {
-          div.classList.add("dug");
-
+          cell.classList.add("dug");
           if (state.minesP1.includes(pos) || state.minesP2.includes(pos))
-            div.textContent = "💥";
+            cell.textContent = "💥";
         }
       }
 
-      div.onclick = () => clickCell(r, c);
-      board.appendChild(div);
+      cell.onclick = () => {
+        if (state.phase === "placingP1" || state.phase === "placingP2") {
+          socket.emit("placeMine", { room, pos });
+        } else if (state.phase === "playing") {
+          socket.emit("digCell", { room, pos });
+        }
+      };
+
+      b.appendChild(cell);
     }
   }
 }
 
-function updateUI() {
-  document.getElementById("info").textContent =
-    "Fase: " + state.phase +
-    " | Turno jugador " + state.turn +
-    " | Vidas: P1=" + state.lives[1] +
-    " P2=" + state.lives[2];
-}
-
-socket.on("gameOver", data => {
-  alert("Jugador " + data.loser + " perdió.");
-});
